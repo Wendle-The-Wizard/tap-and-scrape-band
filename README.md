@@ -1,9 +1,9 @@
 # Tap and Scrape Band
 
-A little browser toy where a row of tapping and scraping instruments play a rhythm together. I'm building it one step at a time.
+A little browser toy where a row of tapping and scraping instruments play a rhythm together. I built it one step at a time, and this is the last step.
 
-Right now (step 4) you can edit the beat. Under every instrument is a grid of 16 dots: a coloured dot is a step where it plays, a dark dot is silent. Tap a dot to switch it on or off. A white ring and glow move along the grid to show which step the band is on.
+Press the Start button to wake the band. It loops forever. Under every instrument is a grid of 16 dots: a coloured dot is a step where it plays, a dark dot is silent. Tap a dot to switch it on or off, even while the band plays. A white ring shows the current step in every grid, and a row of 16 lights along the bottom follows along too.
 
-To play, tap any dot or instrument. The first tap wakes the band and it loops forever, so you can change the groove while it plays. The sounds come from the Web Audio API: a woodblock tock, claves clack, a guiro scrape, a triangle ting and a shaker shh.
+Drag the tempo slider to make the band slower or faster, from 60 to 180 beats per minute. Press Stop when you want some quiet. You can also tap an instrument to hear it on its own.
 
-Next I'll add a tempo slider and a start button.
+The sounds come from the Web Audio API: a woodblock tock, claves clack, a guiro scrape, a triangle ting and a shaker shh.
