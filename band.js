@@ -1,4 +1,4 @@
-// Wendle's band: step 3, every instrument now has a looping 16-step pattern.
+// Wendle's band: step 4, click the dots to switch steps on and off.
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
 
@@ -53,6 +53,13 @@ const stepTime = 60 / BPM / 4; // sixteenth notes
 let currentStep = -1;
 let playing = false;
 
+// where a dot sits (canvas pixels), shared by drawing and clicking
+function dotPos(i, k) {
+  const slot = canvas.width / instruments.length;
+  const x = slot * i + slot / 2;
+  return { x: x - 45 + (k % 4) * 30, y: 230 + Math.floor(k / 4) * 32 };
+}
+
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const slot = canvas.width / instruments.length;
@@ -71,16 +78,26 @@ function render() {
     ctx.fillStyle = '#f3e9ff';
     ctx.fillText(inst.name, x, 190);
 
-    // the pattern: a 4x4 grid of dots under each instrument
+    // the pattern: a 4x4 grid of dots, bigger touch targets than they look
     for (let k = 0; k < STEPS; k++) {
-      const gx = x - 45 + (k % 4) * 30;
-      const gy = 230 + Math.floor(k / 4) * 32;
+      const p = dotPos(i, k);
       const on = inst.steps[k];
+      const now = k === currentStep;
+      if (now) {
+        // glow behind the step that is playing right now
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff44';
+        ctx.fill();
+      }
       ctx.beginPath();
-      ctx.arc(gx, gy, 11, 0, Math.PI * 2);
-      ctx.fillStyle = on ? inst.color : '#00000044';
+      ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
+      ctx.fillStyle = on ? inst.color : '#00000066';
       ctx.fill();
-      if (k === currentStep) {
+      ctx.strokeStyle = on ? '#ffffff88' : '#ffffff33';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      if (now) {
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
       }
     }
@@ -107,7 +124,7 @@ function flash(i) { instruments[i].hit = 1; kick(); }
 // so the beat stays steady even if the page gets busy.
 let nextTime = 0;
 let stepIndex = 0;
-const queue = []; // {time, step} so the visuals match what you hear
+const queue = []; // so the visuals match what you hear
 function scheduler() {
   const a = getAudio();
   if (!a) return;
@@ -122,7 +139,6 @@ function scheduler() {
     nextTime += stepTime;
     stepIndex = (stepIndex + 1) % STEPS;
   }
-  // show steps whose time has come
   while (queue.length && queue[0].time <= a.currentTime) {
     const q = queue.shift();
     currentStep = q.step;
@@ -138,16 +154,38 @@ function startBand() {
   stepIndex = 0;
   setInterval(scheduler, 25);
   kick();
-  document.getElementById('hint').textContent = 'The band is looping!';
+  document.getElementById('hint').textContent = 'The band is looping! Tap dots to change the groove.';
 }
 
 canvas.addEventListener('pointerdown', (e) => {
   const r = canvas.getBoundingClientRect();
-  const x = (e.clientX - r.left) / r.width;
-  const i = Math.min(instruments.length - 1, Math.floor(x * instruments.length));
+  // convert the tap to canvas pixels (the canvas is scaled by CSS)
+  const px = (e.clientX - r.left) * canvas.width / r.width;
+  const py = (e.clientY - r.top) * canvas.height / r.height;
+
+  // did Wendle hit a dot? find the nearest one within reach
+  let best = null, bestD = 20;
+  instruments.forEach((inst, i) => {
+    for (let k = 0; k < STEPS; k++) {
+      const p = dotPos(i, k);
+      const d = Math.hypot(px - p.x, py - p.y);
+      if (d < bestD) { bestD = d; best = { i, k }; }
+    }
+  });
+  if (best) {
+    const inst = instruments[best.i];
+    inst.steps[best.k] = !inst.steps[best.k];
+    // a little preview tick when switching on
+    if (inst.steps[best.k]) { playSound(inst.name); flash(best.i); }
+    else render();
+    startBand();
+    return;
+  }
+
+  // otherwise tapping an instrument plays it
+  const i = Math.min(instruments.length - 1, Math.floor(px / canvas.width * instruments.length));
   playSound(instruments[i].name);
   flash(i);
-  // the first tap also wakes the band (a real start button comes in step 5)
   startBand();
 });
 
