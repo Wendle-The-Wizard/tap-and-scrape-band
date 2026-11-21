@@ -1,6 +1,10 @@
-// Wendle's band: step 4, click the dots to switch steps on and off.
+// Wendle's band: step 5, a start button and a tempo slider.
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('start');
+const tempo = document.getElementById('tempo');
+const bpmLabel = document.getElementById('bpmLabel');
+const hint = document.getElementById('hint');
 
 // Each instrument is drawn centred at (0,0).
 function drawWoodblock(c, col) {
@@ -48,10 +52,11 @@ const instruments = [
 
 const SCALE = 1.1;
 const STEPS = 16;
-const BPM = 110;               // fixed for now, slider comes in step 5
-const stepTime = 60 / BPM / 4; // sixteenth notes
+let bpm = 110;                 // the slider changes this
+function stepTime() { return 60 / bpm / 4; } // sixteenth notes
 let currentStep = -1;
 let playing = false;
+let timer = null;
 
 // where a dot sits (canvas pixels), shared by drawing and clicking
 function dotPos(i, k) {
@@ -59,6 +64,9 @@ function dotPos(i, k) {
   const x = slot * i + slot / 2;
   return { x: x - 45 + (k % 4) * 30, y: 230 + Math.floor(k / 4) * 32 };
 }
+
+// the row of 16 lights along the bottom shows where the band is
+function lightPos(k) { return { x: 90 + k * (720 / 15), y: 373 }; }
 
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -78,16 +86,15 @@ function render() {
     ctx.fillStyle = '#f3e9ff';
     ctx.fillText(inst.name, x, 190);
 
-    // the pattern: a 4x4 grid of dots, bigger touch targets than they look
+    // the pattern: a 4x4 grid of dots
     for (let k = 0; k < STEPS; k++) {
       const p = dotPos(i, k);
       const on = inst.steps[k];
       const now = k === currentStep;
       if (now) {
-        // glow behind the step that is playing right now
         ctx.beginPath();
         ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff44';
+        ctx.fillStyle = '#ffffff55';
         ctx.fill();
       }
       ctx.beginPath();
@@ -102,6 +109,16 @@ function render() {
       }
     }
   });
+
+  // step lights
+  for (let k = 0; k < STEPS; k++) {
+    const p = lightPos(k);
+    const now = k === currentStep;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, now ? 12 : 8, 0, Math.PI * 2);
+    ctx.fillStyle = now ? '#ffd86b' : (k % 4 === 0 ? '#ffffff44' : '#ffffff22');
+    ctx.fill();
+  }
 }
 
 // fade the wobble out each frame, keep drawing while anything is moving
@@ -124,7 +141,7 @@ function flash(i) { instruments[i].hit = 1; kick(); }
 // so the beat stays steady even if the page gets busy.
 let nextTime = 0;
 let stepIndex = 0;
-const queue = []; // so the visuals match what you hear
+let queue = []; // so the visuals match what you hear
 function scheduler() {
   const a = getAudio();
   if (!a) return;
@@ -136,7 +153,7 @@ function scheduler() {
       }
     });
     queue.push({ time: nextTime, step: stepIndex, inst: -1 });
-    nextTime += stepTime;
+    nextTime += stepTime(); // read each time so the slider takes effect right away
     stepIndex = (stepIndex + 1) % STEPS;
   }
   while (queue.length && queue[0].time <= a.currentTime) {
@@ -152,10 +169,35 @@ function startBand() {
   playing = true;
   nextTime = a.currentTime + 0.1;
   stepIndex = 0;
-  setInterval(scheduler, 25);
+  queue = [];
+  timer = setInterval(scheduler, 25);
+  startBtn.textContent = 'Stop';
+  startBtn.classList.add('on');
+  hint.textContent = 'The band is looping! Tap dots to change the groove, slide to change the tempo.';
   kick();
-  document.getElementById('hint').textContent = 'The band is looping! Tap dots to change the groove.';
 }
+
+function stopBand() {
+  if (!playing) return;
+  playing = false;
+  clearInterval(timer);
+  timer = null;
+  queue = [];
+  currentStep = -1;
+  startBtn.textContent = 'Start';
+  startBtn.classList.remove('on');
+  hint.textContent = 'The band is resting. Press Start to play again.';
+  render();
+}
+
+startBtn.addEventListener('click', () => {
+  if (playing) stopBand(); else startBand();
+});
+
+tempo.addEventListener('input', () => {
+  bpm = Number(tempo.value);
+  bpmLabel.textContent = bpm;
+});
 
 canvas.addEventListener('pointerdown', (e) => {
   const r = canvas.getBoundingClientRect();
@@ -178,15 +220,15 @@ canvas.addEventListener('pointerdown', (e) => {
     // a little preview tick when switching on
     if (inst.steps[best.k]) { playSound(inst.name); flash(best.i); }
     else render();
-    startBand();
     return;
   }
 
   // otherwise tapping an instrument plays it
-  const i = Math.min(instruments.length - 1, Math.floor(px / canvas.width * instruments.length));
-  playSound(instruments[i].name);
-  flash(i);
-  startBand();
+  if (py < 200) {
+    const i = Math.min(instruments.length - 1, Math.floor(px / canvas.width * instruments.length));
+    playSound(instruments[i].name);
+    flash(i);
+  }
 });
 
 render();
