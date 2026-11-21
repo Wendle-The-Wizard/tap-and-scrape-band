@@ -1,0 +1,18 @@
+/* Wendle's styles: a dark stage with a glowing title */
+body {
+  margin: 0;
+  padding: 12px;
+  background: #1d1530;
+  color: #f3e9ff;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+}
+h1 { font-size: 1.6rem; margin: 8px 0 0; color: #ffd86b; }
+.sub { margin: 4px 0 12px; opacity: 0.8; }
+canvas {
+  width: 100%;
+  max-width: 900px;
+  height: auto;
+  background: #2b1f47;
+  border-radius: 12px;
+}
